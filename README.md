@@ -35,7 +35,7 @@ CLI login.
 
 ## 3. Configure Azure OpenAI
 
-Copy `.env.example` to `.env` and set:
+Copy `.env.example` to `.env` in the project root and set:
 
 - `AZURE_OPENAI_ENDPOINT`: your Azure OpenAI resource endpoint
 - `AZURE_OPENAI_DEPLOYMENT`: the deployment name in Azure (not necessarily the model name)
@@ -45,8 +45,8 @@ The client uses the Agent Framework Responses API default version.
 
 ## 4. Run the examples
 
-The examples are in the `Lab1` folder. Examples that call Azure OpenAI use the
-Key Vault configuration above.
+The examples are in the `Lab1` and `Lab2` folders. Examples that call Azure
+OpenAI use the root `.env` file and Key Vault configuration above.
 
 ### Single agent
 
@@ -174,6 +174,84 @@ the complete agent response. Keep the MCP server running while using the
 client. Type `exit` or `quit` to stop the client, and use Ctrl+C to stop the
 server.
 
+### Harness research assistant
+
+Lab2 introduces `create_harness_agent`, which combines an agent with planning
+and execution modes, todo tracking, context compaction, file memory, telemetry,
+web search, and an autonomous work loop.
+
+Run the research assistant from the project root:
+
+```bash
+python Lab2/harness_research.py
+```
+
+Start by entering a research topic. The agent begins in `plan` mode and creates
+a plan for review. When the plan is satisfactory, ask the agent to execute it.
+In `execute` mode, the harness continues through the open todos automatically,
+up to the configured limit of 10 passes.
+
+After each research question, the program asks whether to show the full
+observability log. Choose `y` to display the exposed operational details while
+the agent works, or `n` to display only its streamed response:
+
+```text
+Show full observability log? (y/n):
+```
+
+- Startup, configuration, authentication, and readiness stages.
+- Live streamed agent responses and non-text events such as web searches.
+- Model request and response counts, latency, model name, response ID, and
+  finish reason.
+- Harness tool names, inputs, outputs, failures, and execution time.
+- Todo-loop pass numbers, continuation decisions, and next-pass messages.
+- Per-model-call, per-turn, and cumulative session token usage, including
+  input, output, reasoning, cache-created, and cache-read tokens when reported
+  by the model provider.
+- Per-turn and total program execution time.
+
+The console reports observable stages and tool activity, but it does not expose
+the model's private chain-of-thought. Final research reports are saved through
+the harness file-memory provider. By default, its data is stored under
+`agent-file-memory` in the directory from which the script is launched.
+
+### Multi-agent motor FNOL harness
+
+Run the simulated motor insurance First Notice of Loss (FNOL) workflow:
+
+```bash
+python Lab2/harness_motor_claim.py
+```
+
+The lead `FNOLCoordinator` gathers claim details, prepares a plan, and delegates
+work to five background specialists:
+
+- `FNOLIntakeSpecialist` validates completeness and normalizes the loss facts.
+- `CoverageReviewSpecialist` identifies policy and coverage questions for a
+  human adjuster.
+- `DamageTriageSpecialist` reviews safety, drivability, towing, and inspection
+  needs.
+- `FraudSignalSpecialist` identifies neutral inconsistencies and verification
+  needs without making accusations.
+- `ClaimsRoutingSpecialist` recommends priority, ownership, and next actions for
+  human claims handling.
+
+The coordinator can start independent assessments concurrently, wait for all
+specialists, retrieve their results, and synthesize a draft FNOL report. It uses
+the same optional full-observability console as the research harness, with each
+model and tool event labeled by agent name.
+
+This is an educational simulation. It does not connect to an insurer or submit
+a real claim. It must not automatically approve or deny coverage, determine
+liability or fraud, authorize repairs, or promise payment. Its output requires
+verification by an authorized human claims professional.
+
+Both harness examples set `store=False`, so conversation and tool-call history
+is replayed from the local `InMemoryHistoryProvider`. This avoids depending on
+Azure retaining a `previous_response_id` between model calls. After changing
+this setting, restart the Python process so it creates a fresh session without
+an old service-side response ID.
+
 For the interactive examples, type questions in the terminal and enter
 `exit` or `quit` to stop.
 
@@ -200,6 +278,15 @@ counts from `AgentResponse.usage_details`.
   executors.
 - `MCPStreamableHTTPTool` connects an Agent Framework agent to remote MCP tools.
 - `FunctionMiddleware` observes tool calls without changing their behavior.
+- `create_harness_agent` assembles planning, todos, memory, compaction, web
+  search, telemetry, and looping around an agent.
+- `ChatMiddleware` observes each underlying model request and response.
+- Streaming with `agent.run(..., stream=True)` exposes response updates while
+  the agent is working.
+- `todos_remaining(...)` controls whether the harness starts another autonomous
+  execution pass.
+- `background_agents` lets a coordinator launch specialist tasks concurrently,
+  wait for completion, retrieve results, and continue or clear those tasks.
 
 References:
 

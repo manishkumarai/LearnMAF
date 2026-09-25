@@ -1,0 +1,1 @@
+FNOL findings summary consolidating intake validation, coverage review, damage triage findings, fraud indicators, and routing guidance.

@@ -1,0 +1,1 @@
+Draft FNOL report for front bumper damage using default placeholders where details are missing.
